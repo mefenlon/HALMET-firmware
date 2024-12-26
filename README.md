@@ -8,3 +8,6 @@ By default, the example firmware is configured to read the engine RPM from input
 
 To customize the software for your own purposes, edit the `src/main.cpp` file.
 Parts intended to be customized are marked with `EDIT:` comments.
+
+1Wire GPIO4
+I2C GPIO21 (SDA), GPIO22 (SCL)
