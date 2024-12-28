@@ -1,0 +1,19 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "./.pio"
+		},
+		{
+			"name": "Hamlet-1Wire",
+			"path": "../Hamlet-1Wire"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"new": "cpp"
+		}
+	}
+}
