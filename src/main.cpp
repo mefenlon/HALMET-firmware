@@ -96,6 +96,13 @@ const int kTestOutputPin = GPIO_NUM_33;
 const int kTestOutputFrequency = 380;
 #endif
 
+#ifdef ENABLE_ONE_WIRE
+#include "sensesp_onewire/onewire_temperature.h"
+using namespace sensesp::onewire;
+const int OneWirePin = GPIO_NUM_4;
+uint read_delay = 500;
+#endif
+
 /////////////////////////////////////////////////////////////////////
 // The setup function performs one-time application initialization.
 void setup() {
@@ -360,6 +367,41 @@ void setup() {
       PrintValue(display, 4, "Alarm", state_string);
     });
   }
+
+  #ifdef ENABLE_ONE_WIRE
+    DallasTemperatureSensors* dts = new DallasTemperatureSensors(OneWirePin);
+
+    // Measure temperature 1
+    auto probe_1_temp = new OneWireTemperature(dts, read_delay, "/coolantTemperature/oneWire");
+      
+    ConfigItem(probe_1_temp)
+      ->set_title("1Wire Temp 1")
+      ->set_description("Temp from 1 Wire sensor #1")
+      ->set_sort_order(3100);
+
+    probe_1_temp->connect_to(new LambdaConsumer<float>(
+        [](float value) { debugD("Temp T1: %f", value); }));
+
+    // Measure temperature 2
+    auto probe_2_temp = new OneWireTemperature(dts, read_delay, "/engineTemperature/oneWire");
+      
+    ConfigItem(probe_2_temp)
+      ->set_title("1Wire Temp 2")
+      ->set_description("Temp from 1 Wire sensor #2")
+      ->set_sort_order(3100);
+
+    probe_2_temp->connect_to(new LambdaConsumer<float>(
+        [](float value) { debugD("Temp T2: %f", value); }));
+
+    #ifdef ENABLE_SIGNALK
+      probe_1_temp->connect_to(
+          new SKOutputFloat("sensors.t1.temperature", "1",new SKMetadata("T","1Wire Temp Value T1"))
+        );
+      probe_2_temp->connect_to(
+          new SKOutputFloat("sensors.t2.temperature", "1",new SKMetadata("T","1Wire Temp Value T2"))
+        );
+    #endif
+  #endif
 
   // To avoid garbage collecting all shared pointers created in setup(),
   // loop from here.
