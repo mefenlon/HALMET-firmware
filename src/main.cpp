@@ -67,6 +67,25 @@ elapsedMillis n2k_time_since_tx = 0;
 TwoWire* i2c;
 Adafruit_SSD1306* display;
 
+// Convenience function to print the addresses found on the I2C bus
+void ScanI2C(TwoWire* i2c) {
+  uint8_t error, address;
+
+  debugD("Scanning...");
+
+  for (address = 1; address < 127; address++) {
+    i2c->beginTransmission(address);
+    error = i2c->endTransmission();
+
+    if (error == 0) {
+      debugD("I2C device found at address 0x%d", address);
+    } else if (error == 4) {
+      debugD("Unknown error at address 0x%d", address);
+    }
+  }
+  debugD("done");
+}
+
 // Store alarm states in an array for local display output
 bool alarm_states[4] = {false, false, false, false};
 
@@ -402,6 +421,14 @@ void setup() {
         );
     #endif
   #endif
+
+
+
+  #ifdef ENABLE_I2C_SCAN
+   ScanI2C(i2c);
+  #endif
+
+  
 
   // To avoid garbage collecting all shared pointers created in setup(),
   // loop from here.
