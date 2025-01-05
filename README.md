@@ -11,3 +11,9 @@ Parts intended to be customized are marked with `EDIT:` comments.
 
 1Wire GPIO4
 I2C GPIO21 (SDA), GPIO22 (SCL)
+
+Qwiic
+    Red - 3.3VDC Power
+    Black - Ground
+    Blue - I2C SDA Data
+    Yellow - I2C SCL Clock
