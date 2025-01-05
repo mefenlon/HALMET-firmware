@@ -433,13 +433,151 @@ void setup() {
     #endif
   #endif
 
-
-
   #ifdef ENABLE_I2C_SCAN
    ScanI2C(i2c);
   #endif
 
+  #ifdef ENABLE_BME680
+    // Initialize BME680
+    auto bme680 = new Adafruit_BME680(i2c);
   
+    bool bme680_initialized = bme680->begin(BME68X_DEFAULT_ADDRESS);
+
+    if (bme680_initialized) {
+      debugD("BME680 initialized: %d", bme680_initialized);
+
+      //Initial Settings
+      bme680->setTemperatureOversampling(BME680_OS_8X);
+      bme680->setHumidityOversampling(BME680_OS_2X);
+      bme680->setPressureOversampling(BME680_OS_4X);
+      bme680->setIIRFilterSize(BME680_FILTER_SIZE_3);
+      bme680->setGasHeater(320, 150);
+
+      //Repeat sensor to perform reading
+      //https://adafruit.github.io/Adafruit_BME680/html/class_adafruit___b_m_e680.html#a902242a4ff4fee842c04243434a4873f
+      //Performs a full reading of all 4 sensors in the BME680. Assigns the internal Adafruit_BME680::temperature, Adafruit_BME680::pressure, Adafruit_BME680::humidity and Adafruit_BME680::gas_resistance member variables.
+      //Returns True on success, False on failure
+      //We then use this repeat sensor in 4 outputs using transforms to output temperature, pressure,humidity and gas_resistance
+      auto bme680_sensor =
+        new sensesp::RepeatSensor<bool>(bme_read_delay, [bme680]() {
+          return bme680->performReading();
+        });
+
+      //Debug readings
+      bme680_sensor->connect_to(new LambdaConsumer<float>(
+        [bme680](float value) { 
+          debugD("bme680 temperature: %f", bme680->temperature);
+          debugD("bme680 pressure: %f", bme680->pressure); 
+          debugD("bme680 humidity: %f", bme680->humidity); 
+          debugD("bme680 gas_resistance: %f", bme680->gas_resistance); 
+        }));
+
+      //Configure outut for sensor status
+      auto bme680_status_sk_output = new sensesp::SKOutputFloat(
+          "environment/inside/sensorbme680_1/status", 
+          "bme680/status",
+          new sensesp::SKMetadata(
+            "bool",
+            "bme680_status",
+            "BME680 status of bme680->performReading()")
+        );
+
+      ConfigItem(bme680_status_sk_output)
+          ->set_title("bme680_status")
+          ->set_description("BME680 Status")
+          ->set_sort_order(41000);
+
+      bme680_sensor->connect_to(bme680_status_sk_output);
+      
+      //Configure output for sensor temperature reading
+      auto bme680_temperature_sk_output = new sensesp::SKOutputFloat(
+          "environment/inside/sensorbme680_1/temperature", 
+          "bme680/temperature",
+          new sensesp::SKMetadata(
+            "T",
+            "bme680_temperature",
+            "BME680 Temperature in K (Kelvin)")
+        );
+
+      ConfigItem(bme680_temperature_sk_output)
+          ->set_title("bme680_temperature")
+          ->set_description("BME680 Temperature in K (Kelvin)")
+          ->set_sort_order(33000);
+
+      //bme680_temperature->connect_to(bme680_temperature_sk_output);
+      bme680_sensor->connect_to(new LambdaTransform<bool, float>(
+        [bme680](float value) { 
+          return bme680->temperature + 273.15;
+        }))->connect_to(bme680_temperature_sk_output);
+
+      //Configure output for sensor pressure reading
+      auto bme680_pressure_sk_output = new sensesp::SKOutputFloat(
+          "environment/inside/sensorbme680_1/pressure", 
+          "bme680/pressure",
+          new sensesp::SKMetadata(
+            "Pa",
+            "bme680_pressure",
+            "BME680 pressure in Pa (Pascals)")
+        );
+
+      ConfigItem(bme680_pressure_sk_output)
+          ->set_title("bme680_pressure")
+          ->set_description("BME680 pressure in Pa (Pascals)")
+          ->set_sort_order(33000);
+
+      bme680_sensor->connect_to(new LambdaTransform<bool, float>(
+        [bme680](float value) { 
+          return bme680->pressure;
+        }))->connect_to(bme680_pressure_sk_output);
+
+      //Configure output for sensor humidity reading
+      auto bme680_humidity_sk_output = new sensesp::SKOutputFloat(
+          "environment/inside/sensorbme680_1/humidity", 
+          "bme680/humidity",
+          new sensesp::SKMetadata(
+            "ratio",
+            "bme680_humidity",
+            "BME680 humidity in (ratio)")
+        );
+
+      ConfigItem(bme680_humidity_sk_output)
+          ->set_title("bme680_humidity")
+          ->set_description("BME680 humidity in (ratio)")
+          ->set_sort_order(33000);
+
+      bme680_sensor->connect_to(new LambdaTransform<bool, float>(
+        [bme680](float value) { 
+          return bme680->humidity;
+        }))->connect_to(bme680_humidity_sk_output);
+
+      //Configure output for sensor gas_resistance reading
+      auto bme680_gas_resistance_sk_output = new sensesp::SKOutputFloat(
+          "environment/inside/sensorbme680_1/gas_resistance", 
+          "bme680/gas_resistance",
+          new sensesp::SKMetadata(
+            "ohm",
+            "bme680_gas_resistance",
+            "BME680 gas_resistance in Ohms. Higher concentrations of VOC will make the resistance lower.")
+        );
+
+      ConfigItem(bme680_gas_resistance_sk_output)
+          ->set_title("bme680_gas_resistance")
+          ->set_description("BME680 gas_resistance in Ohms")
+          ->set_sort_order(33000);
+
+      bme680_sensor->connect_to(new LambdaTransform<bool, float>(
+        [bme680](float value) { 
+          return bme680->gas_resistance;
+        }))->connect_to(bme680_gas_resistance_sk_output);
+
+    } else{
+      debugD("Could not find a valid BME680 sensor");
+      while (1);
+    }
+  #endif
+
+  debugD("Setup Complete");
+  debugD("Starting Loop");
 
   // To avoid garbage collecting all shared pointers created in setup(),
   // loop from here.
