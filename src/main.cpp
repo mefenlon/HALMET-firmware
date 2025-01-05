@@ -137,6 +137,7 @@ void setup() {
   // esp_log_level_set("*", esp_log_level_t::ESP_LOG_DEBUG);
 
   Serial.begin(115200);
+  debugD("Setup Starting");
 
   /////////////////////////////////////////////////////////////////////
   // Initialize the application framework
