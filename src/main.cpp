@@ -244,62 +244,44 @@ void setup() {
   #ifdef ENABLE_HAMLET_ANALOG
     ///////////////////////////////////////////////////////////////////
     // Analog inputs
+    int analog_sort_order = 1000;
 
-    // Connect the tank senders.
-    // EDIT: To enable more tanks, uncomment the lines below.
-    auto tank_a1_volume = ConnectTankSender(ads1115, 0, "Fuel", "fuel.main", 3000,
-                                            enable_signalk_output);
-    // auto tank_a2_volume = ConnectTankSender(ads1115, 1, "A2");
-    // auto tank_a3_volume = ConnectTankSender(ads1115, 2, "A3");
-    // auto tank_a4_volume = ConnectTankSender(ads1115, 3, "A4");
-
-    #ifdef ENABLE_NMEA2000_OUTPUT
-      // Tank 1, instance 0. Capacity 200 liters. You can change the capacity
-      // in the web UI as well.
-      // EDIT: Make sure this matches your tank configuration above.
-      N2kFluidLevelSender* tank_a1_sender = new N2kFluidLevelSender(
-          "/Tanks/Fuel/NMEA 2000", 0, N2kft_Fuel, 200, nmea2000);
-
-      ConfigItem(tank_a1_sender)
-          ->set_title("Tank A1 NMEA 2000")
-          ->set_description("NMEA 2000 tank sender for tank A1")
-          ->set_sort_order(3005);
-
-      tank_a1_volume->connect_to(&(tank_a1_sender->tank_level_));
-    #endif  // ENABLE_NMEA2000_OUTPUT
-
-    if (display_present) {
-      // EDIT: Duplicate the lines below to make the display show all your tanks.
-      tank_a1_volume->connect_to(new LambdaConsumer<float>(
-          [](float value) { PrintValue(display, 2, "Tank A1", 100 * value); }));
-    }
-
+    //Define strings
+    String a2_title = "Hamlet Analog Input 2";
+    String a2_sk_path = "sensors.analog_input.a2";
+    String a2_config_path = "/Sensors/Analog Input/Hamlet A2/";
     // Read the voltage level of analog input A2
-    auto a2_voltage = new ADS1115VoltageInput(ads1115, 1, "/Voltage A2");
+    auto a2_voltage = new ADS1115VoltageInput(ads1115, 1, a2_config_path + "Multiplier");
 
     ConfigItem(a2_voltage)
-        ->set_title("Analog Voltage A2")
+        ->set_title(a2_title)
         ->set_description("Voltage level of analog input A2")
-        ->set_sort_order(3000);
+        ->set_sort_order(analog_sort_order++);
 
     a2_voltage->connect_to(new LambdaConsumer<float>(
         [](float value) { debugD("Voltage A2: %f", value); }));
 
-    // If you want to output something else than the voltage value,
-    // you can insert a suitable transform here.
-    // For example, to convert the voltage to a distance with a conversion
-    // factor of 0.17 m/V, you could use the following code:
-    // auto a2_distance = new Linear(0.17, 0.0);
-    // a2_voltage->connect_to(a2_distance);
-
     #ifdef ENABLE_SIGNALK
-      a2_voltage->connect_to(
-          new SKOutputFloat("sensors.a2.voltage", "Analog Voltage A2",
-                            new SKMetadata("V","Analog Voltage A2")));
-      // Example of how to output the distance value to Signal K.
-      // a2_distance->connect_to(
-      //     new SKOutputFloat("sensors.a2.distance", "Analog Distance A2",
-      //                       new SKMetadata("m", "Analog Distance A2")));
+      //Define signalk metadata
+      SKMetadata* a2_metadata = new SKMetadata();
+      a2_metadata->units_ = "V";
+      a2_metadata->description_ = "Hamlet Analog Input 2 Value";
+      a2_metadata->display_name_ = "Hamlet A2";
+      a2_metadata->short_name_ = "A2";
+      
+      //Define sk output
+      auto a2_sk_output = new SKOutputFloat(
+          a2_sk_path + ".voltage",
+          a2_config_path + "sk_path",
+          a2_metadata
+      );
+
+      ConfigItem(a2_sk_output)
+          ->set_title(a2_title)
+          ->set_description("The SK path to publish the analog input voltage")
+          ->set_sort_order(analog_sort_order++);
+
+      a2_voltage->connect_to(a2_sk_output);
     #endif 
   #endif
 
