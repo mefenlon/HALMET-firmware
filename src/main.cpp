@@ -420,6 +420,13 @@ void setup() {
   #endif
 
   #ifdef ENABLE_BME680
+     int bme_sort_order = 6000;
+
+    //Define strings
+    String bme_title = "BME680 on i2c";
+    String bme_sk_path = "sensors.i2c.bme680";
+    String bme_config_path = "/Sensors/i2c/bme680/";
+
     // Initialize BME680
     auto bme680 = new Adafruit_BME680(i2c);
   
@@ -455,44 +462,83 @@ void setup() {
         }));
 
       //Configure outut for sensor status
-      auto bme680_status_sk_output = new sensesp::SKOutputFloat(
-          "environment/inside/sensorbme680_1/status", 
-          "bme680/status",
-          new sensesp::SKMetadata(
-            "bool",
-            "bme680_status",
-            "BME680 status of bme680->performReading()")
-        );
+      //Define signalk metadata
+      SKMetadata* bme_status_metadata = new SKMetadata();
+      bme_status_metadata->units_ = "bool";
+      bme_status_metadata->description_ = "BME680 Status will be true if sensor is functioning normally";
+      bme_status_metadata->display_name_ = "BME680 Status";
+      bme_status_metadata->short_name_ = "BME680 Status";
+      
+      //Define sk output
+      auto bme_status_sk_output = new SKOutputFloat(
+          bme_sk_path + ".status",
+          bme_config_path + "status",
+          bme_status_metadata
+      );
 
-      ConfigItem(bme680_status_sk_output)
-          ->set_title("bme680_status")
-          ->set_description("BME680 Status")
-          ->set_sort_order(41000);
+      ConfigItem(bme_status_sk_output)
+          ->set_title(bme_title)
+          ->set_description("The SK path to publish bme680 status")
+          ->set_sort_order(bme_sort_order++);
 
-      bme680_sensor->connect_to(bme680_status_sk_output);
+      bme680_sensor->connect_to(bme_status_sk_output);
       
       //Configure output for sensor temperature reading
-      auto bme680_temperature_sk_output = new sensesp::SKOutputFloat(
-          "environment/inside/sensorbme680_1/temperature", 
-          "bme680/temperature",
-          new sensesp::SKMetadata(
-            "T",
-            "bme680_temperature",
-            "BME680 Temperature in K (Kelvin)")
-        );
+      //Define signalk metadata
+      SKMetadata* bme_temperature_metadata = new SKMetadata();
+      bme_temperature_metadata->units_ = "K";
+      bme_temperature_metadata->description_ = "BME680 Temperature in Kelvin (K)";
+      bme_temperature_metadata->display_name_ = "BME680 Temperature";
+      bme_temperature_metadata->short_name_ = "BME680 Temperature";
+      
+      //Define sk output
+      auto bme_temperature_sk_output = new SKOutputFloat(
+          bme_sk_path + ".temperature",
+          bme_config_path + "temperature",
+          bme_temperature_metadata
+      );
 
-      ConfigItem(bme680_temperature_sk_output)
-          ->set_title("bme680_temperature")
-          ->set_description("BME680 Temperature in K (Kelvin)")
-          ->set_sort_order(33000);
+      ConfigItem(bme_temperature_sk_output)
+          ->set_title(bme_title)
+          ->set_description("The SK path to publish bme680 temperature")
+          ->set_sort_order(bme_sort_order++);
 
-      //bme680_temperature->connect_to(bme680_temperature_sk_output);
-      bme680_sensor->connect_to(new LambdaTransform<bool, float>(
-        [bme680](float value) { 
-          return bme680->temperature + 273.15;
-        }))->connect_to(bme680_temperature_sk_output);
+      bme680_sensor->connect_to(
+          new LambdaTransform<bool, float>(
+            [bme680](float value) { 
+              return bme680->temperature + 273.15;
+            }
+          )
+        )->connect_to(bme_temperature_sk_output);
 
       //Configure output for sensor pressure reading
+      //Define signalk metadata
+      SKMetadata* bme_pressure_metadata = new SKMetadata();
+      bme_pressure_metadata->units_ = "Pa";
+      bme_pressure_metadata->description_ = "BME680 Pressure in Pascals (Pa)";
+      bme_pressure_metadata->display_name_ = "BME680 Pressure";
+      bme_pressure_metadata->short_name_ = "BME680 Pressure";
+      
+      //Define sk output
+      auto bme_pressure_sk_output = new SKOutputFloat(
+          bme_sk_path + ".pressure",
+          bme_config_path + "pressure",
+          bme_pressure_metadata
+      );
+
+      ConfigItem(bme_pressure_sk_output)
+          ->set_title(bme_title)
+          ->set_description("The SK path to publish bme680 pressure")
+          ->set_sort_order(bme_sort_order++);
+
+      bme680_sensor->connect_to(
+          new LambdaTransform<bool, float>(
+            [bme680](float value) { 
+              return bme680->pressure;
+            }
+          )
+        )->connect_to(bme_pressure_sk_output);
+
       auto bme680_pressure_sk_output = new sensesp::SKOutputFloat(
           "environment/inside/sensorbme680_1/pressure", 
           "bme680/pressure",
@@ -502,56 +548,61 @@ void setup() {
             "BME680 pressure in Pa (Pascals)")
         );
 
-      ConfigItem(bme680_pressure_sk_output)
-          ->set_title("bme680_pressure")
-          ->set_description("BME680 pressure in Pa (Pascals)")
-          ->set_sort_order(33000);
-
-      bme680_sensor->connect_to(new LambdaTransform<bool, float>(
-        [bme680](float value) { 
-          return bme680->pressure;
-        }))->connect_to(bme680_pressure_sk_output);
-
       //Configure output for sensor humidity reading
-      auto bme680_humidity_sk_output = new sensesp::SKOutputFloat(
-          "environment/inside/sensorbme680_1/humidity", 
-          "bme680/humidity",
-          new sensesp::SKMetadata(
-            "ratio",
-            "bme680_humidity",
-            "BME680 humidity in (ratio)")
-        );
+      //Define signalk metadata
+      SKMetadata* bme_humidity_metadata = new SKMetadata();
+      bme_humidity_metadata->units_ = "ratio";
+      bme_humidity_metadata->description_ = "BME680 Humidity as ratio (%%)";
+      bme_humidity_metadata->display_name_ = "BME680 Humidity";
+      bme_humidity_metadata->short_name_ = "BME680 Humidity";
+      
+      //Define sk output
+      auto bme_humidity_sk_output = new SKOutputFloat(
+          bme_sk_path + ".humidity",
+          bme_config_path + "humidity",
+          bme_humidity_metadata
+      );
 
-      ConfigItem(bme680_humidity_sk_output)
-          ->set_title("bme680_humidity")
-          ->set_description("BME680 humidity in (ratio)")
-          ->set_sort_order(33000);
+      ConfigItem(bme_humidity_sk_output)
+          ->set_title(bme_title)
+          ->set_description("The SK path to publish bme680 humidity")
+          ->set_sort_order(bme_sort_order++);
 
-      bme680_sensor->connect_to(new LambdaTransform<bool, float>(
-        [bme680](float value) { 
-          return bme680->humidity;
-        }))->connect_to(bme680_humidity_sk_output);
+      bme680_sensor->connect_to(
+          new LambdaTransform<bool, float>(
+            [bme680](float value) { 
+              return bme680->humidity;
+            }
+          )
+        )->connect_to(bme_humidity_sk_output);
 
       //Configure output for sensor gas_resistance reading
-      auto bme680_gas_resistance_sk_output = new sensesp::SKOutputFloat(
-          "environment/inside/sensorbme680_1/gas_resistance", 
-          "bme680/gas_resistance",
-          new sensesp::SKMetadata(
-            "ohm",
-            "bme680_gas_resistance",
-            "BME680 gas_resistance in Ohms. Higher concentrations of VOC will make the resistance lower.")
-        );
+      //Define signalk metadata
+      SKMetadata* bme_gas_resistance_metadata = new SKMetadata();
+      bme_gas_resistance_metadata->units_ = "ohm";
+      bme_gas_resistance_metadata->description_ = "BME680 Gas_resistance in Ohms (ohm). ";
+      bme_gas_resistance_metadata->display_name_ = "BME680 Gas Resistance";
+      bme_gas_resistance_metadata->short_name_ = "BME680 Gas Resistance";
+      
+      //Define sk output
+      auto bme_gas_resistance_sk_output = new SKOutputFloat(
+          bme_sk_path + ".gas_resistance",
+          bme_config_path + "gas_resistance",
+          bme_gas_resistance_metadata
+      );
 
-      ConfigItem(bme680_gas_resistance_sk_output)
-          ->set_title("bme680_gas_resistance")
-          ->set_description("BME680 gas_resistance in Ohms")
-          ->set_sort_order(33000);
+      ConfigItem(bme_gas_resistance_sk_output)
+          ->set_title(bme_title)
+          ->set_description("The SK path to publish bme680 gas resistance")
+          ->set_sort_order(bme_sort_order++);
 
-      bme680_sensor->connect_to(new LambdaTransform<bool, float>(
-        [bme680](float value) { 
-          return bme680->gas_resistance;
-        }))->connect_to(bme680_gas_resistance_sk_output);
-
+      bme680_sensor->connect_to(
+          new LambdaTransform<bool, float>(
+            [bme680](float value) { 
+              return bme680->gas_resistance;
+            }
+          )
+        )->connect_to(bme_gas_resistance_sk_output);
     } else{
       debugD("Could not find a valid BME680 sensor");
       while (1);
