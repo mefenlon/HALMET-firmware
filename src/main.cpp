@@ -26,7 +26,7 @@
 #include "sensesp/system/system_status_led.h"
 #include "sensesp/transforms/lambda_transform.h"
 #include "sensesp/transforms/linear.h"
-#include "sensesp/ui/config_item.h"
+#include "sensesp/sensors/constant_sensor.h"
 
 #ifdef ENABLE_SIGNALK
   #include "sensesp_app_builder.h"
@@ -382,37 +382,96 @@ void setup() {
 
   #ifdef ENABLE_ONE_WIRE
     DallasTemperatureSensors* dts = new DallasTemperatureSensors(OneWirePin);
+    OWDevAddr owda;
+    int sensor_count = 0;
+    int dts_sort_order = 7000;
 
-    // Measure temperature 1
-    auto probe_1_temp = new OneWireTemperature(dts, read_delay, "/coolantTemperature/oneWire");
-      
-    ConfigItem(probe_1_temp)
-      ->set_title("1Wire Temp 1")
-      ->set_description("Temp from 1 Wire sensor #1")
-      ->set_sort_order(3100);
+    //Define a map for OnwWire sensors as they are dynamically defined
+    std::map<int,sensesp::onewire::OneWireTemperature *> map;
 
-    probe_1_temp->connect_to(new LambdaConsumer<float>(
-        [](float value) { debugD("Temp T1: %f", value); }));
+    #ifdef ENABLE_SIGNALK        
+        //Define signalk metadata
+        SKMetadata* dts_count_metadata = new SKMetadata();
+        dts_count_metadata->units_ = "";
+        dts_count_metadata->description_ = "The number of OneWire DTS Sensors detected";
+        dts_count_metadata->display_name_ = "Number of OneWire DTS Sensors";
+        dts_count_metadata->short_name_ = "OneWire DTS Sensors";
 
-    // Measure temperature 2
-    auto probe_2_temp = new OneWireTemperature(dts, read_delay, "/engineTemperature/oneWire");
-      
-    ConfigItem(probe_2_temp)
-      ->set_title("1Wire Temp 2")
-      ->set_description("Temp from 1 Wire sensor #2")
-      ->set_sort_order(3100);
+        auto* dts_count_constant_sensor = new IntConstantSensor(sensor_count, 60, "/sensors/OneWire/dts_count");
 
-    probe_2_temp->connect_to(new LambdaConsumer<float>(
-        [](float value) { debugD("Temp T2: %f", value); }));
-
-    #ifdef ENABLE_SIGNALK
-      probe_1_temp->connect_to(
-          new SKOutputFloat("sensors.t1.temperature", "1",new SKMetadata("T","1Wire Temp Value T1"))
+        //Define sk output
+        auto dts_count_sk_output = new SKOutputFloat(
+            "sensors.onewire.dts_count",
+            "/sensors/OneWire/dts_count/sk_path",
+            dts_count_metadata
         );
-      probe_2_temp->connect_to(
-          new SKOutputFloat("sensors.t2.temperature", "1",new SKMetadata("T","1Wire Temp Value T2"))
+
+        ConfigItem(dts_count_sk_output)
+            ->set_title("OneWire DTS Sensors")
+            ->set_description("The SK path to publish output of sensor count")
+            ->set_sort_order(dts_sort_order++);
+
+        dts_count_constant_sensor->connect_to(dts_count_sk_output);
+      #endif
+
+    //Dynamically assign found sensors
+    while(dts->get_next_address(&owda)){
+      String dts_config_path = "/sensors/OneWire/dts_";
+      String dts_title = "OneWire dts_";
+      String dts_description = "Tempature from OneWire dts_";
+      String dts_sk_path = "sensors.onewire.dts_";
+
+      //Add the sensor_count to strings to make them unique
+      dts_config_path += sensor_count;
+      dts_title += sensor_count;
+      dts_description += sensor_count;
+      dts_sk_path += sensor_count;
+
+      debugD("Setting up sensor: %s", dts_title);
+
+      //Define the new sensor and add it ito the map using the sensor count as key
+      map[sensor_count] = new OneWireTemperature(dts, read_delay, dts_config_path);
+
+      ConfigItem(map[sensor_count])
+        ->set_title(dts_title)
+        ->set_description(dts_description)
+        ->set_sort_order(dts_sort_order++);
+
+      //Define a calibration for the sensor
+      auto temp_calibration =
+      new Linear(1.0, 0.0, dts_config_path + "/linear");
+
+      ConfigItem(temp_calibration)
+          ->set_title(dts_title)
+          ->set_description("Calibration for the temperature sensor")
+          ->set_sort_order(dts_sort_order++);
+
+      #ifdef ENABLE_SIGNALK
+        //Define signalk metadata
+        SKMetadata* dts_metadata = new SKMetadata();
+        dts_metadata->units_ = "K";
+        dts_metadata->description_ = dts_description;
+        dts_metadata->display_name_ = dts_title;
+        dts_metadata->short_name_ = dts_title;
+        
+        //Define sk output
+        auto dts_sk_output = new SKOutputFloat(
+            dts_sk_path + ".temperature",
+            dts_config_path + "/sk_path",
+            dts_metadata
         );
-    #endif
+
+        ConfigItem(dts_sk_output)
+            ->set_title(dts_title)
+            ->set_description("The SK path to publish output of " + dts_title)
+            ->set_sort_order(dts_sort_order++);
+
+        map[sensor_count]->connect_to(temp_calibration)->connect_to(dts_sk_output);
+      #endif
+      sensor_count++;
+    }
+    dts_count_constant_sensor->set(sensor_count);
+    debugD("Number of DTS sensors Found : %d", sensor_count);
   #endif
 
   #ifdef ENABLE_I2C_SCAN
