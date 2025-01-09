@@ -543,6 +543,10 @@ void setup() {
       bme680_sensor->connect_to(bme_status_sk_output);
       
       //Configure output for sensor temperature reading
+      auto* bme_temperature = new RepeatSensor<float>(bme_read_delay, [bme680]() {
+          return (bme680->temperature + 273.15);
+        });
+
       //Define signalk metadata
       SKMetadata* bme_temperature_metadata = new SKMetadata();
       bme_temperature_metadata->units_ = "K";
@@ -562,15 +566,13 @@ void setup() {
           ->set_description("The SK path to publish bme680 temperature")
           ->set_sort_order(bme_sort_order++);
 
-      bme680_sensor->connect_to(
-          new LambdaTransform<bool, float>(
-            [bme680](float value) { 
-              return bme680->temperature + 273.15;
-            }
-          )
-        )->connect_to(bme_temperature_sk_output);
+      bme_temperature->connect_to(bme_temperature_sk_output);
 
       //Configure output for sensor pressure reading
+      auto* bme_pressure = new RepeatSensor<float>(bme_read_delay, [bme680]() {
+          return bme680->pressure;
+        });
+
       //Define signalk metadata
       SKMetadata* bme_pressure_metadata = new SKMetadata();
       bme_pressure_metadata->units_ = "Pa";
@@ -590,13 +592,7 @@ void setup() {
           ->set_description("The SK path to publish bme680 pressure")
           ->set_sort_order(bme_sort_order++);
 
-      bme680_sensor->connect_to(
-          new LambdaTransform<bool, float>(
-            [bme680](float value) { 
-              return bme680->pressure;
-            }
-          )
-        )->connect_to(bme_pressure_sk_output);
+      bme_pressure->connect_to(bme_pressure_sk_output);
 
       auto bme680_pressure_sk_output = new sensesp::SKOutputFloat(
           "environment/inside/sensorbme680_1/pressure", 
@@ -608,6 +604,10 @@ void setup() {
         );
 
       //Configure output for sensor humidity reading
+      auto* bme_humidity = new RepeatSensor<float>(bme_read_delay, [bme680]() {
+          return bme680->humidity;
+        });
+
       //Define signalk metadata
       SKMetadata* bme_humidity_metadata = new SKMetadata();
       bme_humidity_metadata->units_ = "ratio";
@@ -627,15 +627,13 @@ void setup() {
           ->set_description("The SK path to publish bme680 humidity")
           ->set_sort_order(bme_sort_order++);
 
-      bme680_sensor->connect_to(
-          new LambdaTransform<bool, float>(
-            [bme680](float value) { 
-              return bme680->humidity;
-            }
-          )
-        )->connect_to(bme_humidity_sk_output);
+      bme_humidity->connect_to(bme_humidity_sk_output);
 
       //Configure output for sensor gas_resistance reading
+      auto* bme_gas_resistance = new RepeatSensor<float>(bme_read_delay, [bme680]() {
+          return bme680->gas_resistance;
+        });
+
       //Define signalk metadata
       SKMetadata* bme_gas_resistance_metadata = new SKMetadata();
       bme_gas_resistance_metadata->units_ = "ohm";
@@ -655,13 +653,7 @@ void setup() {
           ->set_description("The SK path to publish bme680 gas resistance")
           ->set_sort_order(bme_sort_order++);
 
-      bme680_sensor->connect_to(
-          new LambdaTransform<bool, float>(
-            [bme680](float value) { 
-              return bme680->gas_resistance;
-            }
-          )
-        )->connect_to(bme_gas_resistance_sk_output);
+      bme_gas_resistance->connect_to(bme_gas_resistance_sk_output);
     } else{
       debugD("Could not find a valid BME680 sensor");
       while (1);
